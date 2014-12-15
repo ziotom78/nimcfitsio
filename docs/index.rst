@@ -7,7 +7,7 @@ Welcome to NimCfitsio's documentation!
 ======================================
 
 A set of Nim bindings to the `CFITSIO
-<http://heasarc.gsfc.nasa.gov/fitsio/fitsio.html>` library.
+<http://heasarc.gsfc.nasa.gov/fitsio/fitsio.html>`_ library.
 
 .. toctree::
    :maxdepth: 2

@@ -2,8 +2,8 @@ Introduction
 ============
 
 This manual describes NimCfitsio, a set of bindings to the `CFITSIO
-<http://heasarc.gsfc.nasa.gov/fitsio/fitsio.html>` library for the Nim
-language.
+<http://heasarc.gsfc.nasa.gov/fitsio/fitsio.html>`_ library for the
+Nim language.
 
 The purpose of NimCfitsio is to allow the creation/reading/writing of
 FITS files (either containing images or tables) from Nim programs. The
