@@ -6,11 +6,15 @@
 Welcome to NimCfitsio's documentation!
 ======================================
 
-Contents:
+A set of Nim bindings to the `CFITSIO
+<http://heasarc.gsfc.nasa.gov/fitsio/fitsio.html>` library.
 
 .. toctree::
    :maxdepth: 2
 
+   introduction.rst
+   installation.rst
+   tutorial.rst
 
 
 Indices and tables
@@ -19,4 +23,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
