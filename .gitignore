@@ -1,4 +1,5 @@
 *~
+*.pyc
 cfitsio
 nimcache
 docs/_build

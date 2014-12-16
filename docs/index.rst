@@ -14,7 +14,9 @@ A set of Nim bindings to the `CFITSIO
 
    introduction.rst
    installation.rst
-   tutorial.rst
+   fitsaccess.rst
+   tablefunctions.rst
+   imagefunctions.rst
 
 
 Indices and tables
