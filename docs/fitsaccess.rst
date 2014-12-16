@@ -11,6 +11,20 @@ imported with the following command:
 
     import cfitsio
 
+Virtually every function in NimCfitsio requires as its first argument
+a variable of type :nim:object:`FitsFile`.
+
+.. nim:object:: FitsFile = object
+
+  This object contains the following fields:
+
+============= ================================= =============================
+Name          Type                              Meaning
+============= ================================= =============================
+``file``      ``InternalFitsStruct`` (private)  Used internally by CFITSIO
+``fileName``  ``string``                        Name of the file
+============= ================================= =============================
+
 In case of error, all the NimCfitsio functions raise an exception of
 type :nim:object:`EFitsException`:
 
@@ -61,6 +75,11 @@ If the underlying CFITSIO function fails when opening the file (e.g,
 because the file does not exist), a :nim:object:`EFitsException` will
 be raised.
 
+.. nim:enum:: IoMode = enum ReadOnly, ReadWrite
+
+  This enumeration is used by all the procedures that open an existing
+  FITS file.
+
 .. nim:proc:: proc openFile(fileName : string, ioMode : IoMode): FitsFile
 
   Open the FITS file whose path is *fileName*. If *ioMode* is
@@ -103,10 +122,37 @@ be raised.
 Creating files
 --------------
 
-.. nim:proc:: proc createFile*(fileName : string, overwriteMode : OverwriteMode = Overwrite) : FitsFile
+.. nim:enum:: OverwriteMode = enum Overwrite, DoNotOverwrite
+
+.. nim:proc:: proc createFile(fileName : string, overwriteMode : OverwriteMode = Overwrite) : FitsFile
+
+  Create a new file at the path specified by *fileName*. If a file
+  already exists, the behavior of the function is specified by the
+  *overwriteMode* parameter: if it is equal to ``DoNotOverwrite``, a
+  :nim:object:`EFitsException` exception is raised, otherwise the file
+  is silently overwritten.
+
+  The return value is a :nim:object:`FitsFile` object that should be
+  closed using either :nim:proc:`closeFile` or :nim:proc:`deleteFile`.
+
+  Here is an example about how to use this procedure:
+
+.. code-block:: nim
+
+    import cfitsio
+
+    var f = cfitsio.createFile("test.fits")
+    try:
+        # Write data into "f"
+    finally:
+        cfitsio.closeFile(f)
+
 
 .. nim:proc:: proc createDiskFile*(fileName : string, overwriteMode : OverwriteMode = Overwrite) : FitsFile
 
+  This function is equivalent to :nim:proc::`createFile`, but it does
+  not attempt to interpret *fileName* according to CFITSIO's extended
+  syntax rules.
 
 Closing files
 -------------
@@ -133,50 +179,17 @@ as a whole, but do not fit in any of the previous sections.
 
 .. nim:proc:: proc getFileName(fileObj : var FitsFile) : string
 
+  Return the name of the file associated with the FITS file variable
+  *fileObj*. Since this variable calls CFITSIO instead of simply
+  returning the *file* field of :nim:object:`FitsFile`, it could fail.
+  In the latter case, it will throw a :nim:object:`EFitsException`
+  exception.
+
 .. nim:proc:: proc getFileMode(fileObj : var FitsFile) : IoMode
+
+  Return the I/O mode of the file.
 
 .. nim:proc:: proc getUrlType(fileObj : var FitsFile) : string
 
-
-Moving through the HDUs
------------------------
-
-A FITS files is composed by one or more HDUs. NimCfitsio provides a
-number of functions to know how many HDUs are present in a FITS file
-and what is their content. (To create a new HDU you have first to
-decide which kind of HDU you want. Depending on the answer, you should
-read :ref:`table-functions` or :ref:`image-functions`.)
-
-.. nim:enum:: HduType = enum Any = -1, Image = 0, AsciiTable = 1, BinaryTable = 2
-
-  HDU types recognized by NimCfitsio. The ``Any`` type is used by
-  functions which perform searches on the available HDUs in a file.
-  See the FITS specification documents for further information about
-  the other types.
-
-NimCfitsio (and CFITSIO itself) uses the concept of "current HDU".
-Each :nim:object:`FitsFile` variable is a stateful object. Instead of
-specifying on which HDU a NimCfitsio procedure should operate, the
-user must first select the HDU and then call the desired procedure.
-
-.. nim:proc:: proc moveToAbsHdu(fileObj : var FitsFile, num : int) : HduType
-
-  Select the HDU at position *idx* as the HDU to be used for any
-  following operation on the FITS file. The value of *num* must be
-  between 1 and the value returned by :nim:proc:`getNumberOfHdus`.
-
-.. nim:proc:: proc moveToRelHdu(fileObj : var FitsFile, num : int) : HduType
-
-  Move the current HDU by *num* positions. If *num* is 0, this is a
-  no-op. Positive as well as negative values are allowed.
-
-.. nim:proc:: proc moveToNamedHdu(fileObj : var FitsFile, hduType : HduType, name : string, ver : int = 0)
-
-  Move to the HDU whose name is *name*. If *ver* is not zero, then the
-  HDU must match the version number as well as the name.
-
-  If no matching HDU are found, a :nim:object:`EFitsException` is raised.
-
-.. nim:proc:: proc getNumberOfHdus(fileObj : var FitsFile) : int
-
-  Return the number of HDUs in the FITS file.
+  Return the kind of URL of the file. Possible values are e.g.
+  ``file://``, ``ftp://``, ``http://``.

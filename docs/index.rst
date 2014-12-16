@@ -15,6 +15,7 @@ A set of Nim bindings to the `CFITSIO
    introduction.rst
    installation.rst
    fitsaccess.rst
+   hdufunctions.rst
    tablefunctions.rst
    imagefunctions.rst
 
