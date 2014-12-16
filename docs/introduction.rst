@@ -15,3 +15,9 @@ So far the library provides an extensive, albeit not complete,
 coverage of the functions to read/write keywords and ASCII/binary
 tables. More extensive support for reading/writing images (i.e., 2D
 matrices of numbers) is yet to come.
+
+The specification of the FITS file format is provided in the article
+`Definition of the Flexible Image Transport System (FITS), version
+3.0
+<http://www.aanda.org/index.php?option=com_article&access=doi&doi=10.1051/0004-6361/201015362&Itemid=129>`_
+(Astronomy & Astrophysics, 524, A42, 2010).
