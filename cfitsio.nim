@@ -797,12 +797,12 @@ proc fitsGetColType(filePtr : InternalFitsStruct,
                                                importc : "ffgtclll" .}
 
 type
-    TableColumnInfo = object
-        dataType : DataType
-        repeatCount : int64
-        width : int64
+    TableColumnInfo* = object
+        dataType* : DataType
+        repeatCount* : int64
+        width* : int64
 
-proc getColumnType(fileObj : var FitsFile, colNum : int) : TableColumnInfo =
+proc getColumnType*(fileObj : var FitsFile, colNum : int) : TableColumnInfo =
     var status = 0
     var typecode = 0
     var repeat : int64
@@ -1052,12 +1052,12 @@ proc fitsCreateTable(filePtr : InternalFitsStruct,
 type
     TableType* = range[AsciiTable..BinaryTable]
 
-    TableColumn = object
-        name : string
-        dataType : DataType
-        width : int
-        repeatCount : int
-        unit : string
+    TableColumn* = object
+        name* : string
+        dataType* : DataType
+        width* : int
+        repeatCount* : int
+        unit* : string
 
 proc tableTypeToInt(tableType : TableType) : int {. noSideEffect, inline .} =
     case tableType
