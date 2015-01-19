@@ -1054,10 +1054,11 @@ type
 
     TableColumn* = object
         name* : string
-        dataType* : DataType
-        width* : int
         repeatCount* : int
         unit* : string
+        case dataType* : DataType
+        of dtString: width : int
+        else: nil
 
 proc tableTypeToInt(tableType : TableType) : int {. noSideEffect, inline .} =
     case tableType
@@ -1385,11 +1386,11 @@ when isMainModule:
     block:
         var f = createFile(os.joinPath(os.getTempDir(), "test.fits"))
         let fields : array[3, TableColumn] =
-            [TableColumn(name: "INT", dataType: dtInt32, width: 10,
+            [TableColumn(name: "INT", dataType: dtInt32,
                          repeatCount: 1, unit: "counts"),
              TableColumn(name: "STRING", dataType: dtString, width: 40,
                          repeatCount: 1, unit: ""),
-             TableColumn(name: "DOUBLE", dataType: dtFloat64, width: 15,
+             TableColumn(name: "DOUBLE", dataType: dtFloat64,
                          repeatCount: 3, unit: "K/V")]
         createTable(f, BinaryTable, 3, fields, "TEST")
 
