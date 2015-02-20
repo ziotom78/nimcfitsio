@@ -1422,6 +1422,152 @@ proc getImageSize*(fileObj : var FitsFile) : seq[int64] =
 
 #-------------------------------------------------------------------------------
 
+proc fitsCreateImg(file : InternalFitsStruct,
+                   bitpix : cint,
+                   naxis : cint,
+                   naxes : ptr int64,
+                   status : ptr cint) : cint {. cdecl,
+                                                dynlib : LibraryName,
+                                                importc: "ffcrimll" .}
+
+proc createImage*(fileObj : var FitsFile,
+                  bitsPerPixel : int,
+                  axesDim : openArray[int64]) =
+
+    raiseIfNotOpened(fileObj)
+
+    var dimensions = newSeq[int64](len(axesDim));
+    for i in countup(0, len(axesDim) - 1):
+        dimensions[i] = axesDim[i]
+
+    var status : cint = 0
+    if fitsCreateImg(fileObj.file, cint(bitsPerPixel),
+                     cint(len(axesDim)), addr(dimensions[0]),
+                     addr(status)) != 0:
+        raiseFitsException(status, "file \"" & fileObj.fileName & "\"")
+
+proc createImage*(fileObj : var FitsFile,
+                  dataType : DataType,
+                  axesDim : openArray[int64]) =
+
+    var bitsPerPixel = case dataType
+        of dtInt8: 8
+        of dtInt16: 16
+        of dtInt32: 32
+        of dtInt64: 64
+        of dtFloat32: -32
+        of dtFloat64: -64
+        else:
+            # 211: BAD_BITPIX
+            raiseFitsException(211, "wrong type " & $dataType)
+            0 # Unused
+
+    createImage(fileObj, bitsPerPixel, axesDim)
+
+#-------------------------------------------------------------------------------
+
+proc fitsWritePixll(file : InternalFitsStruct,
+                    datatype : cint,
+                    fpixel : ptr int64,
+                    nelements : int64,
+                    arr : pointer,
+                    status : ptr cint) : cint {. cdecl,
+                                                 dynlib : LibraryName,
+                                                 importc: "ffppxll" .}
+
+template defWritePixel(name : expr, cfitsioType : int, dataType : typeDesc) =
+
+    proc name*(fileObj : var FitsFile, 
+               coord : openArray[int64],
+               values : var openArray[dataType],
+               firstElem : int,
+               numOfElements : int) =
+
+        raiseIfNotOpened(fileObj)
+
+        var coordArray = newSeq[int64](len(coord))
+        for i in countup(0, len(coord) - 1):
+            coordArray[i] = coord[i]
+
+        var status : cint = 0
+        if fitsWritePixll(fileObj.file, cfitsioType, addr(coordArray[0]),
+                          int64(numOfElements), addr(values[firstElem]),
+                          addr(status)) != 0:
+            raiseFitsException(status, "file \"" & fileObj.fileName & "\"")
+
+    proc name*(fileObj : var FitsFile, 
+               coord : openArray[int64],
+               values : var openArray[dataType]) =
+        name(fileObj, coord, values, 0, len(values))
+
+defWritePixel(writePixelOfInt8, tSbyte, int8)
+defWritePixel(writePixelOfInt16, tShort, int16)
+defWritePixel(writePixelOfInt32, tInt, int32)
+defWritePixel(writePixelOfInt64, tLongLong, int64)
+defWritePixel(writePixelOfFloat32, tFloat, float32)
+defWritePixel(writePixelOfFloat64, tDouble, float64)
+
+#-------------------------------------------------------------------------------
+
+proc fitsReadPixll(file : InternalFitsStruct,
+                   datatype : cint,
+                   fpixel : ptr int64,
+                   nelements : int64,
+                   nullValue : pointer,
+                   arr : pointer,
+                   anynul : ptr cint,
+                   status : ptr cint) : cint {. cdecl,
+                                                dynlib : LibraryName,
+                                                importc: "ffgpxvll" .}
+
+template defReadPixel(name : expr, 
+                      cfitsioType : int, 
+                      dataType : typeDesc,
+                      defaultNull : expr) =
+
+    proc name*(fileObj : var FitsFile, 
+               coord : openArray[int64],
+               values : var openArray[dataType],
+               firstElem : int,
+               numOfElements : int,
+               nullValue : dataType) =
+
+        raiseIfNotOpened(fileObj)
+
+        var coordArray = newSeq[int64](len(coord))
+        for i in countup(0, len(coord) - 1):
+            coordArray[i] = coord[i]
+
+        var status : cint = 0
+        var concreteNull = nullValue
+        var anyNull : cint = 0
+        if fitsReadPixll(fileObj.file, cfitsioType, addr(coordArray[0]),
+                          int64(numOfElements), addr(concreteNull),
+                          addr(values[firstElem]), addr(anyNull),
+                          addr(status)) != 0:
+            raiseFitsException(status, "file \"" & fileObj.fileName & "\"")
+
+    proc name*(fileObj : var FitsFile, 
+               coord : openArray[int64],
+               values : var openArray[dataType],
+               firstElem : int,
+               numOfElements : int) =
+        name(fileObj, coord, values, firstElem, numOfElements, defaultNull)
+
+    proc name*(fileObj : var FitsFile, 
+               coord : openArray[int64],
+               values : var openArray[dataType]) =
+        name(fileObj, coord, values, 0, len(values))
+
+defReadPixel(readPixelOfInt8, tSbyte, int8, 0'i8)
+defReadPixel(readPixelOfInt16, tShort, int16, 0'i16)
+defReadPixel(readPixelOfInt32, tInt, int32, 0'i32)
+defReadPixel(readPixelOfInt64, tLongLong, int64, 0'i64)
+defReadPixel(readPixelOfFloat32, tFloat, float32, 0'f32)
+defReadPixel(readPixelOfFloat64, tDouble, float64, 0'f64)
+
+#-------------------------------------------------------------------------------
+
 when isMainModule:
     import os
 
@@ -1543,6 +1689,8 @@ when isMainModule:
                          repeatCount: 1, unit: ""),
              TableColumn(name: "DOUBLE", dataType: dtFloat64,
                          repeatCount: 3, unit: "K/V")]
+
+        # Create a table
         createTable(f, BinaryTable, 3, fields, "TEST")
 
         writeIntKey(f, "KEYINT", 12, "this is a comment")
@@ -1585,5 +1733,26 @@ when isMainModule:
 
             for idx in low(values) .. high(values):
                 assert values[idx] == checkValues[idx]
+
+        # Create an image
+        block:
+            createImage(f, dtInt8, @[10'i64, 15'i64])
+
+            assert getImageType(f) == 8
+            assert getImageDimensions(f) == 2
+
+            let size = getImageSize(f)
+            assert len(size) == 2
+            assert size[0] == 10
+            assert size[1] == 15
+
+            var refValues = [1'i8, 2'i8, 3'i8]
+            writePixelOfInt8(f, @[1'i64, 2'i64], refValues)
+
+            var values : array[0..2, int8]
+            readPixelOfInt8(f, @[1'i64, 2'i64], values)
+
+            for i in low(values)..high(values):
+                assert values[i] == refValues[i]
 
         deleteFile(f)
