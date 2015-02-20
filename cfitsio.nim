@@ -44,7 +44,7 @@ const
     tInt32bit* = 41 ## Shortcut for tLong
 
 type
-    DataType = enum
+    DataType* = enum
         dtBit,
         dtInt8, dtUint8, dtInt16, dtUint16, dtInt32, dtInt64,
         dtFloat32, dtFloat64,
@@ -87,18 +87,18 @@ type
 
 #-------------------------------------------------------------------------------
 
-proc fitsGetErrStatus(statusCode : int,
+proc fitsGetErrStatus(statusCode : cint,
                       errorText : ErrMsgStr) {. cdecl,
                                                 dynlib : LibraryName,
                                                 importc : "ffgerr" .}
 
-proc fitsReadErrMsg(errorText : ErrMsgStr) : int {. cdecl,
-                                                    dynlib : LibraryName,
-                                                    importc : "ffgmsg" .}
+proc fitsReadErrMsg(errorText : ErrMsgStr) : cint {. cdecl,
+                                                     dynlib : LibraryName,
+                                                     importc : "ffgmsg" .}
 
 proc raiseFitsException(statusCode : int, spec : string) {. noinline, noreturn .} =
     var errorText : ErrMsgStr
-    fitsGetErrStatus(statusCode, errorText)
+    fitsGetErrStatus(cint(statusCode), errorText)
 
     var message : string = $errorText
     if spec != "":
@@ -165,9 +165,9 @@ proc codeToDataType(code : int) : DataType {. noSideEffect, inline .} =
 proc fitsOpenFile(filePtr : ptr InternalFitsStruct,
                   fileName : cstring,
                   ioMode : IoMode,
-                  status : ptr int): int {. cdecl,
-                                            dynlib : LibraryName,
-                                            importc : "ffopen" .}
+                  status : ptr cint): cint {. cdecl,
+                                              dynlib : LibraryName,
+                                              importc : "ffopen" .}
 
 proc openFile*(fileName : string, ioMode : IoMode): FitsFile =
     ## Open an existing FITS file. The parameter `ioMode` specifies if
@@ -175,7 +175,7 @@ proc openFile*(fileName : string, ioMode : IoMode): FitsFile =
     ## reading and writing (``ReadWrite``). If the file does not
     ## exist, a EFitsException will be raised.
 
-    var status = 0
+    var status : cint = 0
     result.file = nil
     result.fileName = fileName
     if fitsOpenFile(addr(result.file), fileName, ioMode, addr(status)) != 0:
@@ -186,16 +186,16 @@ proc openFile*(fileName : string, ioMode : IoMode): FitsFile =
 proc fitsOpenData(filePtr : ptr InternalFitsStruct,
                   fileName : cstring,
                   ioMode : IoMode,
-                  status : ptr int): int {. cdecl,
-                                            dynlib : LibraryName,
-                                            importc : "ffdopn" .}
+                  status : ptr cint): cint {. cdecl,
+                                              dynlib : LibraryName,
+                                              importc : "ffdopn" .}
 
 proc openData*(fileName : string, ioMode : IoMode): FitsFile =
     ## This function is similar to `openFile`, but it automatically
     ## moves the current HDU pointer to the first HDU containing data
     ## (either an image or a table).
 
-    var status = 0
+    var status : cint = 0
     result.file = nil
     result.fileName = fileName
     if fitsOpenData(addr(result.file), fileName, ioMode, addr(status)) != 0:
@@ -206,9 +206,9 @@ proc openData*(fileName : string, ioMode : IoMode): FitsFile =
 proc fitsOpenTable(filePtr : ptr InternalFitsStruct,
                    fileName : cstring,
                    ioMode : IoMode,
-                   status : ptr int): int {. cdecl,
-                                             dynlib : LibraryName,
-                                             importc : "fftopn" .}
+                   status : ptr cint): cint {. cdecl,
+                                               dynlib : LibraryName,
+                                               importc : "fftopn" .}
 
 proc openTable*(fileName : string, ioMode : IoMode) : FitsFile =
     ## This function is similar to `openFile`, but it automatically
@@ -216,7 +216,7 @@ proc openTable*(fileName : string, ioMode : IoMode) : FitsFile =
     ## ASCII or binary table. If no HDUs containing tables are found,
     ## a ``EFitsException`` is raised.
 
-    var status = 0
+    var status : cint = 0
     result.file = nil
     result.fileName = fileName
     if fitsOpenTable(addr(result.file), fileName, ioMode, addr(status)) != 0:
@@ -227,9 +227,9 @@ proc openTable*(fileName : string, ioMode : IoMode) : FitsFile =
 proc fitsOpenImage(filePtr : ptr InternalFitsStruct,
                    fileName : cstring,
                    ioMode : IoMode,
-                   status : ptr int): int {. cdecl,
-                                             dynlib : LibraryName,
-                                             importc : "ffiopn" .}
+                   status : ptr cint): cint {. cdecl,
+                                               dynlib : LibraryName,
+                                               importc : "ffiopn" .}
 
 proc openImage*(fileName : string, ioMode : IoMode) : FitsFile =
     ## This function is similar to `openFile`, but it automatically
@@ -237,7 +237,7 @@ proc openImage*(fileName : string, ioMode : IoMode) : FitsFile =
     ## image. If no HDUs containing images are found, a
     ## ``EFitsException`` is raised.
 
-    var status = 0
+    var status : cint = 0
     result.file = nil
     result.fileName = fileName
     if fitsOpenImage(addr(result.file), fileName, ioMode, addr(status)) != 0:
@@ -247,9 +247,9 @@ proc openImage*(fileName : string, ioMode : IoMode) : FitsFile =
 
 proc fitsCreateFile(filePtr : ptr InternalFitsStruct,
                     fileName : cstring,
-                    status : ptr int) : int {. cdecl,
-                                               dynlib : LibraryName,
-                                               importc : "ffinit" .}
+                    status : ptr cint) : cint {. cdecl,
+                                                 dynlib : LibraryName,
+                                                 importc : "ffinit" .}
 
 type
     OverwriteMode* = enum
@@ -262,7 +262,7 @@ proc createFile*(fileName : string,
     ## will be raised. Once the file is created, you should populate
     ## it using the function createTable.
 
-    var status = 0
+    var status : cint = 0
     result.file = nil
     result.fileName = fileName
 
@@ -277,9 +277,9 @@ proc createFile*(fileName : string,
 
 proc fitsCreateDiskFile(filePtr : ptr InternalFitsStruct,
                         fileName : cstring,
-                        status : ptr int) : int {. cdecl,
-                                                   dynlib : LibraryName,
-                                                   importc : "ffdkinit" .}
+                        status : ptr cint) : cint {. cdecl,
+                                                     dynlib : LibraryName,
+                                                     importc : "ffdkinit" .}
 
 proc createDiskFile*(fileName : string,
                      overwriteMode : OverwriteMode = Overwrite) : FitsFile =
@@ -289,7 +289,7 @@ proc createDiskFile*(fileName : string,
     ## choose to create a memory file -- see the CFITSIO documentation
     ## about the function ``ffinit`` for more details.)
 
-    var status = 0
+    var status : cint = 0
     result.file = nil
     result.fileName = fileName
 
@@ -303,9 +303,9 @@ proc createDiskFile*(fileName : string,
 #-------------------------------------------------------------------------------
 
 proc fitsCloseFile(filePtr : InternalFitsStruct,
-                   status : ptr int) : int {. cdecl,
-                                              dynlib : LibraryName,
-                                              importc : "ffclos" .}
+                   status : ptr cint) : cint {. cdecl,
+                                                dynlib : LibraryName,
+                                                importc : "ffclos" .}
 
 proc closeFile*(fileObj : var FitsFile) =
     ## Close a FITS file. If contents have been written or updated, it
@@ -314,21 +314,21 @@ proc closeFile*(fileObj : var FitsFile) =
     ## function *might fail*, so it is possible that it throws a
     ## ``EFitsException`` exception.
 
-    var status = 0
+    var status : cint = 0
     if fitsCloseFile(fileObj.file, addr(status)) != 0:
         raiseFitsException(status, "(file: \"" & fileObj.fileName & "\"")
 
 #-------------------------------------------------------------------------------
 
 proc fitsDeleteFile(filePtr : InternalFitsStruct,
-                    status : ptr int) : int {. cdecl,
-                                               dynlib : LibraryName,
-                                               importc : "ffdelt" .}
+                    status : ptr cint) : cint {. cdecl,
+                                                 dynlib : LibraryName,
+                                                 importc : "ffdelt" .}
 
 proc deleteFile*(fileObj : var FitsFile) =
     ## Delete an opened FITS file from the disk.
 
-    var status = 0
+    var status : cint = 0
     if fitsDeleteFile(fileObj.file, addr(status)) != 0:
         raiseFitsException(status, "(file: \"" & fileObj.fileName & "\"")
 
@@ -336,14 +336,14 @@ proc deleteFile*(fileObj : var FitsFile) =
 
 proc fitsFileName(filePtr : InternalFitsStruct,
                   fileName : array[0..flenFileName, char],
-                  status : ptr int) : int {. cdecl,
-                                             dynlib : LibraryName,
-                                             importc : "ffflnm" .}
+                  status : ptr cint) : cint {. cdecl,
+                                               dynlib : LibraryName,
+                                               importc : "ffflnm" .}
 
 proc getFileName*(fileObj : var FitsFile) : string =
     ## Return the name of the file associated with the ``FitsFile`` object.
 
-    var status = 0
+    var status : cint = 0
     var cResult : array[0..flenFileName, char]
     if fitsFileName(fileObj.file, cResult, addr(status)) != 0:
         raiseFitsException(status, "(file: \"" & fileObj.fileName & "\"")
@@ -353,12 +353,12 @@ proc getFileName*(fileObj : var FitsFile) : string =
 
 proc fitsFileMode(filePtr : InternalFitsStruct,
                   mode : ptr IoMode,
-                  status : ptr int) : int {. cdecl,
-                                             dynlib : LibraryName,
-                                             importc : "ffflmd" .}
+                  status : ptr cint) : cint {. cdecl,
+                                               dynlib : LibraryName,
+                                               importc : "ffflmd" .}
 
 proc getFileMode*(fileObj : var FitsFile) : IoMode =
-    var status = 0
+    var status : cint = 0
     var mode : IoMode
     if fitsFileMode(fileObj.file, addr(mode), addr(status)) != 0:
         raiseFitsException(status, "(file: \"" & fileObj.fileName & "\"")
@@ -368,12 +368,12 @@ proc getFileMode*(fileObj : var FitsFile) : IoMode =
 
 proc fitsUrlType(filePtr : InternalFitsStruct,
                  urlType : array[0..flenFileName, char],
-                 status : ptr int) : int {. cdecl,
-                                            dynlib : LibraryName,
-                                            importc : "ffurlt" .}
+                 status : ptr cint) : cint {. cdecl,
+                                              dynlib : LibraryName,
+                                              importc : "ffurlt" .}
 
 proc getUrlType*(fileObj : var FitsFile) : string =
-    var status = 0
+    var status : cint = 0
     var cResult : array[0..flenFileName, char]
     if fitsUrlType(fileObj.file, cResult, addr(status)) != 0:
         raiseFitsException(status, "(file: \"" & fileObj.fileName & "\"")
@@ -382,16 +382,16 @@ proc getUrlType*(fileObj : var FitsFile) : string =
 #-------------------------------------------------------------------------------
 
 proc fitsMovabsHdu(filePtr : InternalFitsStruct,
-                   hduNum : int,
-                   hduType : ptr int,
-                   status : ptr int) : int {. cdecl,
-                                             dynlib : LibraryName,
-                                             importc : "ffmahd" .}
+                   hduNum : cint,
+                   hduType : ptr cint,
+                   status : ptr cint) : cint {. cdecl,
+                                                dynlib : LibraryName,
+                                                importc : "ffmahd" .}
 
 proc moveToAbsHdu*(fileObj : var FitsFile, num : int) : HduType =
-    var status = 0
-    var cHduType = 0
-    if fitsMovabsHdu(fileObj.file, num, addr(cHduType), addr(status)) != 0:
+    var status : cint = 0
+    var cHduType : cint = 0
+    if fitsMovabsHdu(fileObj.file, cint(num), addr(cHduType), addr(status)) != 0:
         raiseFitsException(status, "HDU number " & $num &
                                    " in file \"" & fileObj.fileName & "\"")
     result = HduType(cHduType)
@@ -399,17 +399,17 @@ proc moveToAbsHdu*(fileObj : var FitsFile, num : int) : HduType =
 #-------------------------------------------------------------------------------
 
 proc fitsMovrelHdu(filePtr : InternalFitsStruct,
-                   hduNum : int,
-                   hduType : ptr int,
-                   status : ptr int) : int {. cdecl,
-                                              dynlib : LibraryName,
-                                              importc : "ffmrhd" .}
+                   hduNum : cint,
+                   hduType : ptr cint,
+                   status : ptr cint) : cint {. cdecl,
+                                                dynlib : LibraryName,
+                                                importc : "ffmrhd" .}
 
 proc moveToRelHdu*(fileObj : var FitsFile,
                    num : int) : HduType =
-    var status = 0
-    var cHduType = 0
-    if fitsMovrelHdu(fileObj.file, num, addr(cHduType), addr(status)) != 0:
+    var status : cint = 0
+    var cHduType : cint = 0
+    if fitsMovrelHdu(fileObj.file, cint(num), addr(cHduType), addr(status)) != 0:
         raiseFitsException(status, "relative HDU number " & $num &
                                    " in file \"" & fileObj.fileName & "\"")
     result = HduType(cHduType)
@@ -417,52 +417,52 @@ proc moveToRelHdu*(fileObj : var FitsFile,
 #-------------------------------------------------------------------------------
 
 proc fitsMovnamHdu(filePtr : InternalFitsStruct,
-                   hduType : int,
+                   hduType : cint,
                    extName : cstring,
-                   extVer : int,
-                   status : ptr int) : int {. cdecl,
-                                              dynlib : LibraryName,
-                                              importc : "ffmnhd" .}
+                   extVer : cint,
+                   status : ptr cint) : cint {. cdecl,
+                                                dynlib : LibraryName,
+                                                importc : "ffmnhd" .}
 
 proc moveToNamedHdu*(fileObj : var FitsFile,
                      hduType : HduType,
                      name : string,
                      ver : int = 0) =
-    var status = 0
-    if fitsMovnamHdu(fileObj.file, int(hduType), name, ver, addr(status)) != 0:
+    var status : cint = 0
+    if fitsMovnamHdu(fileObj.file, cint(hduType), name, cint(ver), addr(status)) != 0:
         raiseFitsException(status, "HDU " & name &
                                    " in file \"" & fileObj.fileName & "\"")
 
 #-------------------------------------------------------------------------------
 
 proc fitsGetNumHdus(filePtr : InternalFitsStruct,
-                    num : ptr int,
-                    status : ptr int) : int {. cdecl,
-                                              dynlib : LibraryName,
-                                              importc : "ffthdu" .}
+                    num : ptr cint,
+                    status : ptr cint) : cint {. cdecl,
+                                                 dynlib : LibraryName,
+                                                 importc : "ffthdu" .}
 
 proc getNumberOfHdus*(fileObj : var FitsFile) : int =
-    var status = 0
-    var cResult : int = 0
+    var status : cint = 0
+    var cResult : cint = 0
     if fitsGetNumHdus(fileObj.file, addr(cResult), addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileObj.fileName & "\"")
 
-    result = cResult
+    result = int(cResult)
 
 #-------------------------------------------------------------------------------
 
 proc fitsReadKey(filePtr : InternalFitsStruct,
-                 datatype : int,
+                 datatype : cint,
                  keyname : cstring,
                  value : ptr char,
                  comment : cstring,
-                 status : ptr int) : int {. cdecl,
-                                            dynlib : LibraryName,
-                                            importc : "ffgky" .}
+                 status : ptr cint) : cint {. cdecl,
+                                              dynlib : LibraryName,
+                                              importc : "ffgky" .}
 
 template defineReadKeyProc(name : expr, t : typeDesc, cfitsioType : int) =
     proc name*(fileObj : var FitsFile, keyName : string) : t =
-        var status = 0
+        var status : cint = 0
         if fitsReadKey(fileObj.file, cfitsioType,
                        keyName, cast[ptr char](addr(result)), nil,
                        addr(status)) != 0:
@@ -477,7 +477,7 @@ proc readLogicKey*(fileObj : var FitsFile, keyName : string) : bool =
     result = (readIntKey(fileObj, keyName) != 0)
 
 proc readStringKey*(fileObj : var FitsFile, keyName : string) : string =
-    var status = 0
+    var status : cint = 0
     var cResult : ValueStr
 
     if fitsReadKey(fileObj.file, tString,
@@ -489,10 +489,10 @@ proc readStringKey*(fileObj : var FitsFile, keyName : string) : string =
 
 template defReadComplex(floatType : typeDesc,
                         complexType : typeDesc,
-                        cfitsioType : int,
+                        cfitsioType : cint,
                         name : expr) =
     proc name*(fileObj : var FitsFile, keyName : string) : complexType =
-        var status = 0
+        var status : cint = 0
         var cResult : array[0..1, floatType]
 
         if fitsReadKey(fileObj.file, cfitsioType,
@@ -509,34 +509,34 @@ defReadComplex(float64, Complex64, tDblComplex, readComplex64Key)
 #-------------------------------------------------------------------------------
 
 proc fitsWriteKey(filePtr : InternalFitsStruct,
-                  dataType : int,
+                  dataType : cint,
                   keyName : cstring,
                   value : pointer,
                   comment : cstring,
-                  status : ptr int) : int {. cdecl,
-                                             dynlib : LibraryName,
-                                             importc : "ffpky" .}
+                  status : ptr cint) : cint {. cdecl,
+                                               dynlib : LibraryName,
+                                               importc : "ffpky" .}
 
 proc fitsUpdateKey(filePtr : InternalFitsStruct,
-                   dataType : int,
+                   dataType : cint,
                    keyName : cstring,
                    value : pointer,
                    comment : cstring,
-                   status : ptr int) : int {. cdecl,
-                                              dynlib : LibraryName,
-                                              importc : "ffuky" .}
+                   status : ptr cint) : cint {. cdecl,
+                                                dynlib : LibraryName,
+                                                importc : "ffuky" .}
 
 template defWriteKey(name : expr,
                      fitsFunc : expr,
                      dataType : typeDesc,
-                     dtDataType : int) =
+                     dtDataType : cint) =
 
     proc name*(fileObj : var FitsFile,
                keyName : string,
                value : dataType,
                comment : string = "") =
 
-        var status = 0
+        var status : cint = 0
         var cValue : dataType = value
 
         if fitsFunc(fileObj.file, dtDataType, keyName, addr(cValue),
@@ -559,7 +559,7 @@ template defWriteStrKey(name : expr, fitsFunc : expr) =
                value : string,
                comment : string = "") =
 
-        var status = 0
+        var status : cint = 0
         if fitsFunc(fileObj.file, tString, keyName, cstring(value),
                     comment, addr(status)) != 0:
             raiseFitsException(status, "unable to write key \"" & keyName & "\"" &
@@ -573,21 +573,21 @@ defWriteStrKey(updateStringKey, fitsUpdateKey)
 proc fitsWriteKeyNull(fileObj : InternalFitsStruct,
                       keyName : cstring,
                       comment : cstring,
-                      status : ptr int) : int {. cdecl,
-                                                 dynlib : LibraryName,
-                                                 importc : "ffpkyu" .}
+                      status : ptr cint) : cint {. cdecl,
+                                                   dynlib : LibraryName,
+                                                   importc : "ffpkyu" .}
 
 proc fitsUpdateKeyNull(fileObj : InternalFitsStruct,
                        keyName : cstring,
                        comment : cstring,
-                       status : ptr int) : int {. cdecl,
-                                                  dynlib : LibraryName,
-                                                  importc : "ffukyu" .}
+                       status : ptr cint) : cint {. cdecl,
+                                                    dynlib : LibraryName,
+                                                    importc : "ffukyu" .}
 
 template defWriteKeyNull(name : expr, fitsFunc : expr) =
 
     proc name*(fileObj : var FitsFile, keyName : string, comment : string) =
-        var status = 0
+        var status : cint = 0
         if fitsFunc(fileObj.file, keyName, comment, addr(status)) != 0:
             raiseFitsException(status, "unable to write key \"" & keyName & "\"" &
                                    " in file \"" & fileObj.fileName & "\"")
@@ -599,12 +599,12 @@ defWriteKeyNull(updateNullKey, fitsUpdateKeyNull)
 
 proc fitsWriteComment(fileObj : InternalFitsStruct,
                       comment : cstring,
-                      status : ptr int) : int {. cdecl,
-                                                 dynlib : LibraryName,
-                                                 importc : "ffpcom" .}
+                      status : ptr cint) : cint {. cdecl,
+                                                   dynlib : LibraryName,
+                                                   importc : "ffpcom" .}
 
 proc writeComment*(fileObj : var FitsFile, comment : string) =
-    var status = 0
+    var status : cint = 0
     if fitsWriteComment(fileObj.file, comment, addr(status)) != 0:
         raiseFitsException(status, "unable to write comment \"" & comment & "\"" &
                                    " in file \"" & fileObj.fileName & "\"")
@@ -614,12 +614,12 @@ proc writeComment*(fileObj : var FitsFile, comment : string) =
 proc fitsModifyComment(fileObj : InternalFitsStruct,
                        keyName : cstring,
                        comment : cstring,
-                       status : ptr int) : int {. cdecl,
-                                                  dynlib : LibraryName,
-                                                  importc : "ffmcom" .}
+                       status : ptr cint) : cint {. cdecl,
+                                                    dynlib : LibraryName,
+                                                    importc : "ffmcom" .}
 
 proc modifyComment*(fileObj : var FitsFile, keyName : string, comment : string) =
-    var status = 0
+    var status : cint = 0
     if fitsModifyComment(fileObj.file, keyName, comment, addr(status)) != 0:
         raiseFitsException(status, "unable to modify comment for key \"" & keyName &
                                    "\" in file \"" & fileObj.fileName & "\"")
@@ -629,12 +629,12 @@ proc modifyComment*(fileObj : var FitsFile, keyName : string, comment : string) 
 proc fitsRenameKey(fileObj : InternalFitsStruct,
                    oldName : cstring,
                    newName : cstring,
-                   status : ptr int) : int {. cdecl,
-                                              dynlib : LibraryName,
-                                              importc : "ffmnam" .}
+                   status : ptr cint) : cint {. cdecl,
+                                                dynlib : LibraryName,
+                                                importc : "ffmnam" .}
 
 proc renameKey*(fileObj : var FitsFile, oldName : string, newName : string) =
-    var status = 0
+    var status : cint = 0
     if fitsRenameKey(fileObj.file, oldName, newName, addr(status)) != 0:
         raiseFitsException(status, "unable to rename key \"" & oldName & "\"" &
                                    " in file \"" & fileObj.fileName & "\"")
@@ -644,12 +644,12 @@ proc renameKey*(fileObj : var FitsFile, oldName : string, newName : string) =
 proc fitsWriteKeyUnit(fileObj : InternalFitsStruct,
                       keyName : cstring,
                       unit : cstring,
-                      status : ptr int) : int {. cdecl,
-                                                 dynlib : LibraryName,
-                                                 importc : "ffpunt" .}
+                      status : ptr cint) : cint {. cdecl,
+                                                   dynlib : LibraryName,
+                                                   importc : "ffpunt" .}
 
 proc writeKeyUnit*(fileObj : var FitsFile, keyName : string, unit : string) =
-    var status = 0
+    var status : cint = 0
     if fitsWriteKeyUnit(fileObj.file, keyName, unit, addr(status)) != 0:
         raiseFitsException(status, "unable to add a measure unit to key \"" &
                                    keyName & "\" in file \"" & fileObj.fileName &
@@ -659,26 +659,26 @@ proc writeKeyUnit*(fileObj : var FitsFile, keyName : string, unit : string) =
 
 proc fitsDeleteRecord(fileObj : InternalFitsStruct,
                       pos : int,
-                      status : ptr int) : int {. cdecl,
-                                                 dynlib : LibraryName,
-                                                 importc : "ffdrec" .}
+                      status : ptr cint) : cint {. cdecl,
+                                                   dynlib : LibraryName,
+                                                   importc : "ffdrec" .}
 
 proc fitsDeleteKey(fileObj : InternalFitsStruct,
                    keyName : cstring,
-                   status : ptr int) : int {. cdecl,
-                                              dynlib : LibraryName,
-                                              importc : "ffdkey" .}
+                   status : ptr cint) : cint {. cdecl,
+                                                dynlib : LibraryName,
+                                                importc : "ffdkey" .}
 
 proc deleteKey*(fileObj : var FitsFile, keyIndex : int) =
     ## Delete the key whose index is `keyIndex` (the first key has index 1)
-    var status = 0
+    var status : cint = 0
     if fitsDeleteRecord(fileObj.file, keyIndex, addr(status)) != 0:
         raiseFitsException(status, "unable to delete key at index " &
                                    $keyIndex & " in file \"" &
                                    fileObj.fileName & "\"")
 
 proc deleteKey*(fileObj : var FitsFile, keyName : string) =
-    var status = 0
+    var status : cint = 0
     if fitsDeleteKey(fileObj.file, keyName, addr(status)) != 0:
         raiseFitsException(status, "unable to delete key \"" &
                                    keyName & "\" in file \"" &
@@ -688,12 +688,12 @@ proc deleteKey*(fileObj : var FitsFile, keyName : string) =
 
 proc fitsWriteHistory(fileObj : InternalFitsStruct,
                       history : cstring,
-                      status : ptr int) : int {. cdecl,
-                                                 dynlib : LibraryName,
-                                                 importc : "ffphis" .}
+                      status : ptr cint) : cint {. cdecl,
+                                                   dynlib : LibraryName,
+                                                   importc : "ffphis" .}
 
 proc writeHistory*(fileObj : var FitsFile, history : string) =
-    var status = 0
+    var status : cint = 0
     if fitsWriteHistory(fileObj.file, history, addr(status)) != 0:
         raiseFitsException(status, "unable to write history \"" & history & "\"" &
                                    " in file \"" & fileObj.fileName & "\"")
@@ -701,12 +701,12 @@ proc writeHistory*(fileObj : var FitsFile, history : string) =
 #-------------------------------------------------------------------------------
 
 proc fitsWriteDate(fileObj : InternalFitsStruct,
-                   status : ptr int) : int {. cdecl,
-                                              dynlib : LibraryName,
-                                              importc : "ffpdat" .}
+                   status : ptr cint) : cint {. cdecl,
+                                                dynlib : LibraryName,
+                                                importc : "ffpdat" .}
 
 proc writeDate*(fileObj : var FitsFile) =
-    var status = 0
+    var status : cint = 0
     if fitsWriteDate(fileObj.file, addr(status)) != 0:
         raiseFitsException(status, "unable to write the current date" &
                                    " in file \"" & fileObj.fileName & "\"")
@@ -716,12 +716,12 @@ proc writeDate*(fileObj : var FitsFile) =
 proc fitsReadKeyUnit(filePtr : InternalFitsStruct,
                      keyName : cstring,
                      unit : CommentStr,
-                     status : ptr int) : int {. cdecl,
-                                                dynlib : LibraryName,
-                                                importc : "ffgunt" .}
+                     status : ptr cint) : cint {. cdecl,
+                                                  dynlib : LibraryName,
+                                                  importc : "ffgunt" .}
 
 proc readKeyUnit*(fileObj : var FitsFile, keyName : string) : string =
-    var status = 0
+    var status : cint = 0
     var unit : CommentStr
     if fitsReadKeyUnit(fileObj.file, keyName, unit, addr(status)) != 0:
         raiseFitsException(status, "key \"" & keyName & "\"" &
@@ -732,25 +732,28 @@ proc readKeyUnit*(fileObj : var FitsFile, keyName : string) : string =
 #-------------------------------------------------------------------------------
 
 proc fitsGetNumRows(filePtr : InternalFitsStruct,
-                    num : ptr int,
-                    status : ptr int) : int {. cdecl,
-                                              dynlib : LibraryName,
-                                              importc : "ffgnrw" .}
+                    num : ptr cint,
+                    status : ptr cint) : cint {. cdecl,
+                                                dynlib : LibraryName,
+                                                importc : "ffgnrw" .}
 
 proc getNumberOfRows*(fileObj : var FitsFile) : int =
-    var status = 0
-    if fitsGetNumRows(fileObj.file, addr(result), addr(status)) != 0:
+    var status : cint = 0
+    var cResult : cint = 0
+    if fitsGetNumRows(fileObj.file, addr(cResult), addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileObj.fileName & "\"")
+
+    result = int(cResult)
 
 #-------------------------------------------------------------------------------
 
 proc fitsGetColNum(filePtr : InternalFitsStruct,
-                   caseSen : int,
+                   caseSen : cint,
                    templ : cstring,
-                   colNum : ptr int,
-                   status : ptr int) : int {. cdecl,
-                                              dynlib : Libraryname,
-                                              importc : "ffgcno" .}
+                   colNum : ptr cint,
+                   status : ptr cint) : cint {. cdecl,
+                                                dynlib : Libraryname,
+                                                importc : "ffgcno" .}
 
 type
     CaseHandling* = enum
@@ -759,27 +762,30 @@ type
 proc getColumnNumber*(fileObj : var FitsFile,
                       name : string,
                       caseHandling : CaseHandling = IgnoreCase) : int =
-    var status = 0
-    var caseSen : int
+    var status : cint = 0
+    var caseSen : cint
     case caseHandling
     of PreserveCase : caseSen = 1
     of IgnoreCase : caseSen = 0
 
-    if fitsGetColNum(fileObj.file, caseSen, name, addr(result), addr(status)) != 0:
+    var cResult : cint = 0
+    if fitsGetColNum(fileObj.file, caseSen, name, addr(cResult), addr(status)) != 0:
         raiseFitsException(status, "column \"" & name & "\"" &
                                    " in file \"" & fileObj.fileName & "\"")
+
+    result = cResult
 
 #-------------------------------------------------------------------------------
 
 proc fitsGetNumCols(filePtr : InternalFitsStruct,
-                    num : ptr int,
-                    status : ptr int) : int {. cdecl,
-                                              dynlib : LibraryName,
-                                              importc : "ffgncl" .}
+                    num : ptr cint,
+                    status : ptr cint) : cint {. cdecl,
+                                                dynlib : LibraryName,
+                                                importc : "ffgncl" .}
 
 proc getNumberOfColumns*(fileObj : var FitsFile) : int =
-    var status = 0
-    var cResult : int = 0
+    var status : cint = 0
+    var cResult : cint = 0
     if fitsGetNumCols(fileObj.file, addr(cResult), addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileObj.fileName & "\"")
 
@@ -788,13 +794,13 @@ proc getNumberOfColumns*(fileObj : var FitsFile) : int =
 #-------------------------------------------------------------------------------
 
 proc fitsGetColType(filePtr : InternalFitsStruct,
-                    colnum : int,
-                    typecode : ptr int,
+                    colnum : cint,
+                    typecode : ptr cint,
                     repeat : ptr int64,
                     width : ptr int64,
-                    status : ptr int) : int {. cdecl,
-                                               dynlib : LibraryName,
-                                               importc : "ffgtclll" .}
+                    status : ptr cint) : cint {. cdecl,
+                                                 dynlib : LibraryName,
+                                                 importc : "ffgtclll" .}
 
 type
     TableColumnInfo* = object
@@ -803,12 +809,12 @@ type
         width* : int64
 
 proc getColumnType*(fileObj : var FitsFile, colNum : int) : TableColumnInfo =
-    var status = 0
-    var typecode = 0
+    var status : cint = 0
+    var typecode : cint = 0
     var repeat : int64
     var width : int64
 
-    if fitsGetColType(fileObj.file, colNum,
+    if fitsGetColType(fileObj.file, cint(colNum),
                       addr(typecode), addr(repeat), addr(width),
                       addr(status)) != 0:
         raiseFitsException(status, "column " & $colNum &
@@ -821,14 +827,14 @@ proc getColumnType*(fileObj : var FitsFile, colNum : int) : TableColumnInfo =
 #-------------------------------------------------------------------------------
 
 proc fitsGetRowSize(filePtr : InternalFitsStruct,
-                    nrows : ptr int,
-                    status : ptr int) : int {. cdecl,
-                                               dynlib : LibraryName,
-                                               importc : "ffgrsz" .}
+                    nrows : ptr cint,
+                    status : ptr cint) : cint {. cdecl,
+                                                 dynlib : LibraryName,
+                                                 importc : "ffgrsz" .}
 
 proc getOptimalNumberOfRowsForIO*(fileObj : var FitsFile) : int =
-    var status = 0
-    var cResult : int = 0
+    var status : cint = 0
+    var cResult : cint = 0
     if fitsGetRowSize(fileObj.file, addr(cResult), addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileObj.fileName & "\"")
 
@@ -837,30 +843,30 @@ proc getOptimalNumberOfRowsForIO*(fileObj : var FitsFile) : int =
 #-------------------------------------------------------------------------------
 
 proc fitsReadCol(filePtr : InternalFitsStruct,
-                 dataType : int,
-                 colNum : int,
+                 dataType : cint,
+                 colNum : cint,
                  firstRow : int64,
                  firstElem : int64,
                  numOfElements : int64,
                  nullValue : ptr char,
                  destArray : ptr char,
-                 anyNull : ptr int,
-                 status : ptr int) : int {. cdecl,
-                                            dynlib : LibraryName,
-                                            importc : "ffgcv" .}
+                 anyNull : ptr cint,
+                 status : ptr cint) : cint {. cdecl,
+                                              dynlib : LibraryName,
+                                              importc : "ffgcv" .}
 
 proc fitsReadColNull(filePtr : InternalFitsStruct,
-                     dataType : int,
-                     colNum : int,
+                     dataType : cint,
+                     colNum : cint,
                      firstRow : int64,
                      firstElem : int64,
                      numOfElements : int64,
                      destArray : ptr char,
                      nullArray : ptr bool,
-                     anyNull : ptr int,
-                     status : ptr int) : int {. cdecl,
-                                                dynlib : LibraryName,
-                                                importc : "ffgcf" .}
+                     anyNull : ptr cint,
+                     status : ptr cint) : cint {. cdecl,
+                                                  dynlib : LibraryName,
+                                                  importc : "ffgcf" .}
 
 template defReadColumn(cfitsioType : int,
                        datatype : typeDesc,
@@ -877,13 +883,13 @@ template defReadColumn(cfitsioType : int,
                destFirstIdx : int,
                nullValue : datatype) =
 
-        var anyNull : int
-        var status : int = 0
+        var anyNull : cint
+        var status : cint = 0
         var cNull = nullValue
 
         if fitsReadCol(fileObj.file,
                        cfitsioType,
-                       colNum,
+                       cint(colNum),
                        int64(firstRow),
                        int64(firstElem),
                        int64(numOfElements),
@@ -904,14 +910,14 @@ template defReadColumn(cfitsioType : int,
                destNull : var openArray[bool],
                destFirstIdx : int) =
 
-        var anyNull : int
-        var status : int = 0
+        var anyNull : cint
+        var status : cint = 0
         var cDestNull : seq[int8]
         newSeq(cDestNull, numOfElements)
 
         if fitsReadColNull(fileObj.file,
                            cfitsioType,
-                           colNum,
+                           cint(colNum),
                            int64(firstRow),
                            int64(firstElem),
                            int64(numOfElements),
@@ -970,16 +976,16 @@ defReadColumn(tDouble, float64, readColumnOfFloat64, 0.0'f64)
 #-------------------------------------------------------------------------------
 
 proc fitsReadColStr(filePtr : InternalFitsStruct,
-                    colnum : int,
+                    colnum : cint,
                     firstrow : int64,
                     firstelem : int64,
                     nelements : int64,
                     nulstr : cstring,
                     dest : ptr cstring,
-                    anynull : ptr int,
-                    status : ptr int) : int {. cdecl,
-                                               dynlib : LibraryName,
-                                               importc : "ffgcvs" .}
+                    anynull : ptr cint,
+                    status : ptr cint) : cint {. cdecl,
+                                                 dynlib : LibraryName,
+                                                 importc : "ffgcvs" .}
 
 proc readColumnOfString*(fileObj : var FitsFile,
                          colNum : int,
@@ -990,8 +996,8 @@ proc readColumnOfString*(fileObj : var FitsFile,
                          destFirstIdx : int,
                          nullValue : string = "") =
 
-        var anyNull : int
-        var status : int = 0
+        var anyNull : cint
+        var status : cint = 0
 
         let columnInfo = getColumnType(fileObj, colNum)
 
@@ -1002,7 +1008,7 @@ proc readColumnOfString*(fileObj : var FitsFile,
 
         try:
             if fitsReadColStr(fileObj.file,
-                              colNum,
+                              cint(colNum),
                               int64(firstRow),
                               int64(firstElem),
                               int64(numOfElements),
@@ -1038,16 +1044,16 @@ proc readColumnOfString*(fileObj : var FitsFile,
 #-------------------------------------------------------------------------------
 
 proc fitsCreateTable(filePtr : InternalFitsStruct,
-                     tableType : int,
+                     tableType : cint,
                      naxis2 : int64,
-                     tFields : int,
+                     tFields : cint,
                      ttype : cstringArray,
                      tform : cstringArray,
                      tunit : cstringArray,
                      extname : cstring,
-                     status : ptr int) : int {. cdecl,
-                                                dynlib : LibraryName,
-                                                importc : "ffcrtb" .}
+                     status : ptr cint) : cint {. cdecl,
+                                                  dynlib : LibraryName,
+                                                  importc : "ffcrtb" .}
 
 type
     TableType* = range[AsciiTable..BinaryTable]
@@ -1060,7 +1066,7 @@ type
         of dtString: width : int
         else: nil
 
-proc tableTypeToInt(tableType : TableType) : int {. noSideEffect, inline .} =
+proc tableTypeToInt(tableType : TableType) : cint {. noSideEffect, inline .} =
     case tableType
     of AsciiTable: result = 1
     of BinaryTable: result = 2
@@ -1071,7 +1077,7 @@ proc createTable*(fileObj : var FitsFile,
                   fields : openArray[TableColumn],
                   extname : string) =
 
-    var status : int = 0
+    var status : cint = 0
     var ttypeSeq : seq[string]
     var tformSeq : seq[string]
     var tunitSeq : seq[string]
@@ -1099,7 +1105,7 @@ proc createTable*(fileObj : var FitsFile,
 
     try:
         if fitsCreateTable(fileObj.file, tableTypeToInt(tableType),
-                           numOfElements, len(fields),
+                           numOfElements, cint(len(fields)),
                            ttype, tform, tunit,
                            extname, addr(status)) != 0:
             raiseFitsException(status, "unable to create table \"" &
@@ -1113,16 +1119,16 @@ proc createTable*(fileObj : var FitsFile,
 #-------------------------------------------------------------------------------
 
 proc fitsWriteColNull(filePtr : InternalFitsStruct,
-                      dataType : int,
-                      colNum : int,
+                      dataType : cint,
+                      colNum : cint,
                       firstRow : int64,
                       firstElem : int64,
                       numOfElements : int64,
                       sourceArray : pointer,
                       nullPtr : pointer,
-                      status : ptr int) : int {. cdecl,
-                                                 dynlib : LibraryName,
-                                                 importc : "ffpcn" .}
+                      status : ptr cint) : cint {. cdecl,
+                                                   dynlib : LibraryName,
+                                                   importc : "ffpcn" .}
 
 template defWriteCol(name : expr, cfitsioType : int, dataType : typeDesc) =
 
@@ -1135,9 +1141,9 @@ template defWriteCol(name : expr, cfitsioType : int, dataType : typeDesc) =
                valueFirstIdx : int,
                nullPtr : ptr dataType = nil) =
 
-        var status = 0
+        var status : cint = 0
 
-        if fitsWriteColNull(fileObj.file, cfitsioType, colNum,
+        if fitsWriteColNull(fileObj.file, cfitsioType, cint(colNum),
                             int64(firstRow), int64(firstElem),
                             int64(numOfElements), addr(values[valueFirstIdx]),
                             nullPtr, addr(status)) != 0:
@@ -1171,14 +1177,14 @@ defWriteCol(writeColumnOfFloat64, tDouble, float64)
 #-------------------------------------------------------------------------------
 
 proc fitsWriteColStr(filePtr : InternalFitsStruct,
-                     colNum : int,
+                     colNum : cint,
                      firstRow : int64,
                      firstElem : int64,
                      numOfElements : int64,
                      sourceArray : pointer,
-                     status : ptr int) : int {. cdecl,
-                                                dynlib : LibraryName,
-                                                importc : "ffpcls" .}
+                     status : ptr cint) : cint {. cdecl,
+                                                  dynlib : LibraryName,
+                                                  importc : "ffpcls" .}
 
 proc writeColumnOfString*(fileObj : var FitsFile,
                           colNum : int,
@@ -1189,7 +1195,7 @@ proc writeColumnOfString*(fileObj : var FitsFile,
                           valueFirstIdx : int,
                           nullPtr : ptr string = nil) =
 
-        var status : int = 0
+        var status : cint = 0
 
         # It is slightly inefficient to convert each string in
         # "values" into a cstring, as we're going to use only those
@@ -1200,7 +1206,7 @@ proc writeColumnOfString*(fileObj : var FitsFile,
         var cValues = allocCStringArray(values)
         try:
             if fitsWriteColStr(fileObj.file,
-                               colNum,
+                               cint(colNum),
                                int64(firstRow),
                                int64(firstElem),
                                int64(numOfElements),
@@ -1230,42 +1236,48 @@ proc writeColumnOfString*(fileObj : var FitsFile,
 #-------------------------------------------------------------------------------
 
 proc fitsGetImgType(file : InternalFitsStruct,
-                    bitpix : ptr int,
-                    status : ptr int) : int {. cdecl,
-                                               dynlib : LibraryName,
-                                               importc : "ffgidt" .}
+                    bitpix : ptr cint,
+                    status : ptr cint) : cint {. cdecl,
+                                                 dynlib : LibraryName,
+                                                 importc : "ffgidt" .}
 
 proc getImageType*(fileObj : var FitsFile) : int =
-    var status = 0
-    if fitsGetImgType(fileObj.file, addr(result), addr(status)) != 0:
+    var status : cint = 0
+    var cResult : cint = 0
+    if fitsGetImgType(fileObj.file, addr(cResult), addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileObj.fileName & "\"")
+
+    result = int(cResult)
 
 #-------------------------------------------------------------------------------
 
 proc fitsGetImgDim(file : InternalFitsStruct,
-                   naxis : ptr int,
-                   status : ptr int) : int {. cdecl,
-                                              dynlib : LibraryName,
-                                              importc : "ffgidm" .}
+                   naxis : ptr cint,
+                   status : ptr cint) : cint {. cdecl,
+                                                dynlib : LibraryName,
+                                                importc : "ffgidm" .}
 
 proc getImageDimensions*(fileObj : var FitsFile) : int =
-    var status = 0
-    if fitsGetImgDim(fileObj.file, addr(result), addr(status)) != 0:
+    var status : cint = 0
+    var cResult : cint = 0
+    if fitsGetImgDim(fileObj.file, addr(cResult), addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileObj.fileName & "\"")
+
+    result = int(cResult)
 
 #-------------------------------------------------------------------------------
 
 proc fitsGetImgSizell(file : InternalFitsStruct,
-                      maxdim : int,
+                      maxdim : cint,
                       naxes : ptr int64,
-                      status : ptr int) : int {. cdecl,
-                                                 dynlib : LibraryName,
-                                                 importc : "ffgiszll" .}
+                      status : ptr cint) : cint {. cdecl,
+                                                   dynlib : LibraryName,
+                                                   importc : "ffgiszll" .}
 
 proc getImageSize*(fileObj : var FitsFile) : seq[int64] =
-    var status = 0
+    var status : cint = 0
     newSeq(result, getImageDimensions(fileObj))
-    if fitsGetImgSizell(fileObj.file, len(result),
+    if fitsGetImgSizell(fileObj.file, cint(len(result)),
                         addr(result[0]), addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileObj.fileName & "\"")
 
