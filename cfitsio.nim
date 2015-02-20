@@ -76,6 +76,7 @@ type
         ## Connection to an opened FITS file
         file : InternalFitsStruct
         fileName : string
+        opened : bool
 
     Complex32 = object
         re : float32
@@ -120,6 +121,17 @@ proc raiseFitsException(statusCode : int, spec : string) {. noinline, noreturn .
 
 proc raiseFitsException(statusCode : int) {. noinline, noreturn .} =
     raiseFitsException(statusCode, "")
+
+#-------------------------------------------------------------------------------
+
+proc raiseIfNotOpened(fileObj : var FitsFile) =
+    if not fileObj.opened:
+        # Exception 104 is FILE_NOT_OPENED: it is used when a
+        # openFile/openTable/etc fails, but we stretch it a bit to
+        # mean that a read/write operation has been attempted to a
+        # file that has not been opened or that has already been
+        # closed.
+        raiseFitsException(104, "file not opened")
 
 #-------------------------------------------------------------------------------
 
@@ -178,8 +190,11 @@ proc openFile*(fileName : string, ioMode : IoMode): FitsFile =
     var status : cint = 0
     result.file = nil
     result.fileName = fileName
+    result.opened = false
     if fitsOpenFile(addr(result.file), fileName, ioMode, addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileName & "\"")
+
+    result.opened = true
 
 #-------------------------------------------------------------------------------
 
@@ -198,8 +213,11 @@ proc openData*(fileName : string, ioMode : IoMode): FitsFile =
     var status : cint = 0
     result.file = nil
     result.fileName = fileName
+    result.opened = false
     if fitsOpenData(addr(result.file), fileName, ioMode, addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileName & "\"")
+
+    result.opened = true
 
 #-------------------------------------------------------------------------------
 
@@ -219,8 +237,11 @@ proc openTable*(fileName : string, ioMode : IoMode) : FitsFile =
     var status : cint = 0
     result.file = nil
     result.fileName = fileName
+    result.opened = false
     if fitsOpenTable(addr(result.file), fileName, ioMode, addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileName & "\"")
+
+    result.opened = true
 
 #-------------------------------------------------------------------------------
 
@@ -240,8 +261,11 @@ proc openImage*(fileName : string, ioMode : IoMode) : FitsFile =
     var status : cint = 0
     result.file = nil
     result.fileName = fileName
+    result.opened = false
     if fitsOpenImage(addr(result.file), fileName, ioMode, addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileName & "\"")
+
+    result.opened = true
 
 #-------------------------------------------------------------------------------
 
@@ -265,6 +289,7 @@ proc createFile*(fileName : string,
     var status : cint = 0
     result.file = nil
     result.fileName = fileName
+    result.opened = false
 
     var realName = fileName
     if overwriteMode == Overwrite and realName[0] != '!':
@@ -272,6 +297,8 @@ proc createFile*(fileName : string,
 
     if fitsCreateFile(addr(result.file), realName, addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileName & "\"")
+
+    result.opened = true
 
 #-------------------------------------------------------------------------------
 
@@ -292,6 +319,7 @@ proc createDiskFile*(fileName : string,
     var status : cint = 0
     result.file = nil
     result.fileName = fileName
+    result.opened = false
 
     var realName = fileName
     if overwriteMode == Overwrite and realName[0] != '!':
@@ -299,6 +327,8 @@ proc createDiskFile*(fileName : string,
 
     if fitsCreateDiskFile(addr(result.file), realName, addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileName & "\"")
+
+    result.opened = true
 
 #-------------------------------------------------------------------------------
 
@@ -314,9 +344,13 @@ proc closeFile*(fileObj : var FitsFile) =
     ## function *might fail*, so it is possible that it throws a
     ## ``EFitsException`` exception.
 
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     if fitsCloseFile(fileObj.file, addr(status)) != 0:
         raiseFitsException(status, "(file: \"" & fileObj.fileName & "\"")
+
+    fileObj.opened = false
 
 #-------------------------------------------------------------------------------
 
@@ -328,9 +362,13 @@ proc fitsDeleteFile(filePtr : InternalFitsStruct,
 proc deleteFile*(fileObj : var FitsFile) =
     ## Delete an opened FITS file from the disk.
 
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     if fitsDeleteFile(fileObj.file, addr(status)) != 0:
         raiseFitsException(status, "(file: \"" & fileObj.fileName & "\"")
+
+    fileObj.opened = false
 
 #-------------------------------------------------------------------------------
 
@@ -342,6 +380,8 @@ proc fitsFileName(filePtr : InternalFitsStruct,
 
 proc getFileName*(fileObj : var FitsFile) : string =
     ## Return the name of the file associated with the ``FitsFile`` object.
+
+    raiseIfNotOpened(fileObj)
 
     var status : cint = 0
     var cResult : array[0..flenFileName, char]
@@ -358,6 +398,9 @@ proc fitsFileMode(filePtr : InternalFitsStruct,
                                                importc : "ffflmd" .}
 
 proc getFileMode*(fileObj : var FitsFile) : IoMode =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var mode : IoMode
     if fitsFileMode(fileObj.file, addr(mode), addr(status)) != 0:
@@ -373,6 +416,9 @@ proc fitsUrlType(filePtr : InternalFitsStruct,
                                               importc : "ffurlt" .}
 
 proc getUrlType*(fileObj : var FitsFile) : string =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var cResult : array[0..flenFileName, char]
     if fitsUrlType(fileObj.file, cResult, addr(status)) != 0:
@@ -389,6 +435,9 @@ proc fitsMovabsHdu(filePtr : InternalFitsStruct,
                                                 importc : "ffmahd" .}
 
 proc moveToAbsHdu*(fileObj : var FitsFile, num : int) : HduType =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var cHduType : cint = 0
     if fitsMovabsHdu(fileObj.file, cint(num), addr(cHduType), addr(status)) != 0:
@@ -407,6 +456,9 @@ proc fitsMovrelHdu(filePtr : InternalFitsStruct,
 
 proc moveToRelHdu*(fileObj : var FitsFile,
                    num : int) : HduType =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var cHduType : cint = 0
     if fitsMovrelHdu(fileObj.file, cint(num), addr(cHduType), addr(status)) != 0:
@@ -428,6 +480,9 @@ proc moveToNamedHdu*(fileObj : var FitsFile,
                      hduType : HduType,
                      name : string,
                      ver : int = 0) =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     if fitsMovnamHdu(fileObj.file, cint(hduType), name, cint(ver), addr(status)) != 0:
         raiseFitsException(status, "HDU " & name &
@@ -442,6 +497,9 @@ proc fitsGetNumHdus(filePtr : InternalFitsStruct,
                                                  importc : "ffthdu" .}
 
 proc getNumberOfHdus*(fileObj : var FitsFile) : int =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var cResult : cint = 0
     if fitsGetNumHdus(fileObj.file, addr(cResult), addr(status)) != 0:
@@ -462,6 +520,9 @@ proc fitsReadKey(filePtr : InternalFitsStruct,
 
 template defineReadKeyProc(name : expr, t : typeDesc, cfitsioType : int) =
     proc name*(fileObj : var FitsFile, keyName : string) : t =
+
+        raiseIfNotOpened(fileObj)
+
         var status : cint = 0
         if fitsReadKey(fileObj.file, cfitsioType,
                        keyName, cast[ptr char](addr(result)), nil,
@@ -474,9 +535,14 @@ defineReadKeyProc(readInt64Key, int64, tLongLong)
 defineReadKeyProc(readFloatKey, float64, tDouble)
 
 proc readLogicKey*(fileObj : var FitsFile, keyName : string) : bool =
+    raiseIfNotOpened(fileObj)
+
     result = (readIntKey(fileObj, keyName) != 0)
 
 proc readStringKey*(fileObj : var FitsFile, keyName : string) : string =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var cResult : ValueStr
 
@@ -492,6 +558,9 @@ template defReadComplex(floatType : typeDesc,
                         cfitsioType : cint,
                         name : expr) =
     proc name*(fileObj : var FitsFile, keyName : string) : complexType =
+
+        raiseIfNotOpened(fileObj)
+
         var status : cint = 0
         var cResult : array[0..1, floatType]
 
@@ -536,6 +605,8 @@ template defWriteKey(name : expr,
                value : dataType,
                comment : string = "") =
 
+        raiseIfNotOpened(fileObj)
+
         var status : cint = 0
         var cValue : dataType = value
 
@@ -558,6 +629,8 @@ template defWriteStrKey(name : expr, fitsFunc : expr) =
                keyName : string,
                value : string,
                comment : string = "") =
+
+        raiseIfNotOpened(fileObj)
 
         var status : cint = 0
         if fitsFunc(fileObj.file, tString, keyName, cstring(value),
@@ -587,6 +660,9 @@ proc fitsUpdateKeyNull(fileObj : InternalFitsStruct,
 template defWriteKeyNull(name : expr, fitsFunc : expr) =
 
     proc name*(fileObj : var FitsFile, keyName : string, comment : string) =
+
+        raiseIfNotOpened(fileObj)
+
         var status : cint = 0
         if fitsFunc(fileObj.file, keyName, comment, addr(status)) != 0:
             raiseFitsException(status, "unable to write key \"" & keyName & "\"" &
@@ -604,6 +680,9 @@ proc fitsWriteComment(fileObj : InternalFitsStruct,
                                                    importc : "ffpcom" .}
 
 proc writeComment*(fileObj : var FitsFile, comment : string) =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     if fitsWriteComment(fileObj.file, comment, addr(status)) != 0:
         raiseFitsException(status, "unable to write comment \"" & comment & "\"" &
@@ -619,6 +698,9 @@ proc fitsModifyComment(fileObj : InternalFitsStruct,
                                                     importc : "ffmcom" .}
 
 proc modifyComment*(fileObj : var FitsFile, keyName : string, comment : string) =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     if fitsModifyComment(fileObj.file, keyName, comment, addr(status)) != 0:
         raiseFitsException(status, "unable to modify comment for key \"" & keyName &
@@ -634,6 +716,9 @@ proc fitsRenameKey(fileObj : InternalFitsStruct,
                                                 importc : "ffmnam" .}
 
 proc renameKey*(fileObj : var FitsFile, oldName : string, newName : string) =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     if fitsRenameKey(fileObj.file, oldName, newName, addr(status)) != 0:
         raiseFitsException(status, "unable to rename key \"" & oldName & "\"" &
@@ -649,6 +734,9 @@ proc fitsWriteKeyUnit(fileObj : InternalFitsStruct,
                                                    importc : "ffpunt" .}
 
 proc writeKeyUnit*(fileObj : var FitsFile, keyName : string, unit : string) =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     if fitsWriteKeyUnit(fileObj.file, keyName, unit, addr(status)) != 0:
         raiseFitsException(status, "unable to add a measure unit to key \"" &
@@ -671,6 +759,9 @@ proc fitsDeleteKey(fileObj : InternalFitsStruct,
 
 proc deleteKey*(fileObj : var FitsFile, keyIndex : int) =
     ## Delete the key whose index is `keyIndex` (the first key has index 1)
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     if fitsDeleteRecord(fileObj.file, keyIndex, addr(status)) != 0:
         raiseFitsException(status, "unable to delete key at index " &
@@ -678,6 +769,9 @@ proc deleteKey*(fileObj : var FitsFile, keyIndex : int) =
                                    fileObj.fileName & "\"")
 
 proc deleteKey*(fileObj : var FitsFile, keyName : string) =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     if fitsDeleteKey(fileObj.file, keyName, addr(status)) != 0:
         raiseFitsException(status, "unable to delete key \"" &
@@ -693,6 +787,9 @@ proc fitsWriteHistory(fileObj : InternalFitsStruct,
                                                    importc : "ffphis" .}
 
 proc writeHistory*(fileObj : var FitsFile, history : string) =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     if fitsWriteHistory(fileObj.file, history, addr(status)) != 0:
         raiseFitsException(status, "unable to write history \"" & history & "\"" &
@@ -706,6 +803,9 @@ proc fitsWriteDate(fileObj : InternalFitsStruct,
                                                 importc : "ffpdat" .}
 
 proc writeDate*(fileObj : var FitsFile) =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     if fitsWriteDate(fileObj.file, addr(status)) != 0:
         raiseFitsException(status, "unable to write the current date" &
@@ -721,6 +821,9 @@ proc fitsReadKeyUnit(filePtr : InternalFitsStruct,
                                                   importc : "ffgunt" .}
 
 proc readKeyUnit*(fileObj : var FitsFile, keyName : string) : string =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var unit : CommentStr
     if fitsReadKeyUnit(fileObj.file, keyName, unit, addr(status)) != 0:
@@ -738,6 +841,9 @@ proc fitsGetNumRows(filePtr : InternalFitsStruct,
                                                 importc : "ffgnrw" .}
 
 proc getNumberOfRows*(fileObj : var FitsFile) : int =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var cResult : cint = 0
     if fitsGetNumRows(fileObj.file, addr(cResult), addr(status)) != 0:
@@ -762,6 +868,9 @@ type
 proc getColumnNumber*(fileObj : var FitsFile,
                       name : string,
                       caseHandling : CaseHandling = IgnoreCase) : int =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var caseSen : cint
     case caseHandling
@@ -784,6 +893,9 @@ proc fitsGetNumCols(filePtr : InternalFitsStruct,
                                                 importc : "ffgncl" .}
 
 proc getNumberOfColumns*(fileObj : var FitsFile) : int =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var cResult : cint = 0
     if fitsGetNumCols(fileObj.file, addr(cResult), addr(status)) != 0:
@@ -809,6 +921,9 @@ type
         width* : int64
 
 proc getColumnType*(fileObj : var FitsFile, colNum : int) : TableColumnInfo =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var typecode : cint = 0
     var repeat : int64
@@ -833,6 +948,9 @@ proc fitsGetRowSize(filePtr : InternalFitsStruct,
                                                  importc : "ffgrsz" .}
 
 proc getOptimalNumberOfRowsForIO*(fileObj : var FitsFile) : int =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var cResult : cint = 0
     if fitsGetRowSize(fileObj.file, addr(cResult), addr(status)) != 0:
@@ -883,6 +1001,8 @@ template defReadColumn(cfitsioType : int,
                destFirstIdx : int,
                nullValue : datatype) =
 
+        raiseIfNotOpened(fileObj)
+
         var anyNull : cint
         var status : cint = 0
         var cNull = nullValue
@@ -909,6 +1029,8 @@ template defReadColumn(cfitsioType : int,
                dest : var openArray[datatype],
                destNull : var openArray[bool],
                destFirstIdx : int) =
+
+        raiseIfNotOpened(fileObj)
 
         var anyNull : cint
         var status : cint = 0
@@ -996,6 +1118,8 @@ proc readColumnOfString*(fileObj : var FitsFile,
                          destFirstIdx : int,
                          nullValue : string = "") =
 
+        raiseIfNotOpened(fileObj)
+
         var anyNull : cint
         var status : cint = 0
 
@@ -1077,6 +1201,8 @@ proc createTable*(fileObj : var FitsFile,
                   fields : openArray[TableColumn],
                   extname : string) =
 
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var ttypeSeq : seq[string]
     var tformSeq : seq[string]
@@ -1141,6 +1267,8 @@ template defWriteCol(name : expr, cfitsioType : int, dataType : typeDesc) =
                valueFirstIdx : int,
                nullPtr : ptr dataType = nil) =
 
+        raiseIfNotOpened(fileObj)
+
         var status : cint = 0
 
         if fitsWriteColNull(fileObj.file, cfitsioType, cint(colNum),
@@ -1195,28 +1323,30 @@ proc writeColumnOfString*(fileObj : var FitsFile,
                           valueFirstIdx : int,
                           nullPtr : ptr string = nil) =
 
-        var status : cint = 0
+    raiseIfNotOpened(fileObj)
 
-        # It is slightly inefficient to convert each string in
-        # "values" into a cstring, as we're going to use only those
-        # that go from index "valueFirstIdx" up to "valueFirstIdx +
-        # numOfElements - 1". But the code is much simpler, and cases
-        # where this matters are probably very rare.
+    var status : cint = 0
 
-        var cValues = allocCStringArray(values)
-        try:
-            if fitsWriteColStr(fileObj.file,
-                               cint(colNum),
-                               int64(firstRow),
-                               int64(firstElem),
-                               int64(numOfElements),
-                               cast[ptr cstring](addr(cValues[valueFirstIdx])),
-                               addr(status)) != 0:
-                raiseFitsException(status, "column number " & $colNum &
-                                           " in file \"" & fileObj.fileName & "\"")
+    # It is slightly inefficient to convert each string in
+    # "values" into a cstring, as we're going to use only those
+    # that go from index "valueFirstIdx" up to "valueFirstIdx +
+    # numOfElements - 1". But the code is much simpler, and cases
+    # where this matters are probably very rare.
 
-        finally:
-            deallocCStringArray(cValues)
+    var cValues = allocCStringArray(values)
+    try:
+        if fitsWriteColStr(fileObj.file,
+                           cint(colNum),
+                           int64(firstRow),
+                           int64(firstElem),
+                           int64(numOfElements),
+                           cast[ptr cstring](addr(cValues[valueFirstIdx])),
+                           addr(status)) != 0:
+            raiseFitsException(status, "column number " & $colNum &
+                                       " in file \"" & fileObj.fileName & "\"")
+
+    finally:
+        deallocCStringArray(cValues)
 
 proc writeColumnOfString*(fileObj : var FitsFile,
                           colNum : int,
@@ -1242,6 +1372,9 @@ proc fitsGetImgType(file : InternalFitsStruct,
                                                  importc : "ffgidt" .}
 
 proc getImageType*(fileObj : var FitsFile) : int =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var cResult : cint = 0
     if fitsGetImgType(fileObj.file, addr(cResult), addr(status)) != 0:
@@ -1258,6 +1391,9 @@ proc fitsGetImgDim(file : InternalFitsStruct,
                                                 importc : "ffgidm" .}
 
 proc getImageDimensions*(fileObj : var FitsFile) : int =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     var cResult : cint = 0
     if fitsGetImgDim(fileObj.file, addr(cResult), addr(status)) != 0:
@@ -1275,6 +1411,9 @@ proc fitsGetImgSizell(file : InternalFitsStruct,
                                                    importc : "ffgiszll" .}
 
 proc getImageSize*(fileObj : var FitsFile) : seq[int64] =
+
+    raiseIfNotOpened(fileObj)
+
     var status : cint = 0
     newSeq(result, getImageDimensions(fileObj))
     if fitsGetImgSizell(fileObj.file, cint(len(result)),
