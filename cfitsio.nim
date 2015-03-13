@@ -835,21 +835,21 @@ proc readKeyUnit*(fileObj : var FitsFile, keyName : string) : string =
 #-------------------------------------------------------------------------------
 
 proc fitsGetNumRows(filePtr : InternalFitsStruct,
-                    num : ptr cint,
+                    num : ptr clonglong,
                     status : ptr cint) : cint {. cdecl,
                                                 dynlib : LibraryName,
-                                                importc : "ffgnrw" .}
+                                                importc : "ffgnrwll" .}
 
-proc getNumberOfRows*(fileObj : var FitsFile) : int =
+proc getNumberOfRows*(fileObj : var FitsFile) : int64 =
 
     raiseIfNotOpened(fileObj)
 
     var status : cint = 0
-    var cResult : cint = 0
+    var cResult : clonglong = 0
     if fitsGetNumRows(fileObj.file, addr(cResult), addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileObj.fileName & "\"")
 
-    result = int(cResult)
+    result = int64(cResult)
 
 #-------------------------------------------------------------------------------
 
@@ -908,8 +908,8 @@ proc getNumberOfColumns*(fileObj : var FitsFile) : int =
 proc fitsGetColType(filePtr : InternalFitsStruct,
                     colnum : cint,
                     typecode : ptr cint,
-                    repeat : ptr int64,
-                    width : ptr int64,
+                    repeat : ptr clong,
+                    width : ptr clong,
                     status : ptr cint) : cint {. cdecl,
                                                  dynlib : LibraryName,
                                                  importc : "ffgtclll" .}
@@ -926,8 +926,8 @@ proc getColumnType*(fileObj : var FitsFile, colNum : int) : TableColumnInfo =
 
     var status : cint = 0
     var typecode : cint = 0
-    var repeat : int64
-    var width : int64
+    var repeat : clong
+    var width : clong
 
     if fitsGetColType(fileObj.file, cint(colNum),
                       addr(typecode), addr(repeat), addr(width),
@@ -936,27 +936,27 @@ proc getColumnType*(fileObj : var FitsFile, colNum : int) : TableColumnInfo =
                                    ", file \"" & fileObj.fileName & "\"")
 
     result.dataType = codeToDataType(typecode)
-    result.repeatCount = repeat
-    result.width = width
+    result.repeatCount = int64(repeat)
+    result.width = int64(width)
 
 #-------------------------------------------------------------------------------
 
 proc fitsGetRowSize(filePtr : InternalFitsStruct,
-                    nrows : ptr cint,
+                    nrows : ptr clong,
                     status : ptr cint) : cint {. cdecl,
                                                  dynlib : LibraryName,
                                                  importc : "ffgrsz" .}
 
-proc getOptimalNumberOfRowsForIO*(fileObj : var FitsFile) : int =
+proc getOptimalNumberOfRowsForIO*(fileObj : var FitsFile) : int64 =
 
     raiseIfNotOpened(fileObj)
 
     var status : cint = 0
-    var cResult : cint = 0
+    var cResult : clong = 0
     if fitsGetRowSize(fileObj.file, addr(cResult), addr(status)) != 0:
         raiseFitsException(status, "file \"" & fileObj.fileName & "\"")
 
-    result = cResult
+    result = int64(cResult)
 
 #-------------------------------------------------------------------------------
 
@@ -1600,7 +1600,7 @@ when isMainModule:
         assert getNumberOfColumns(f) == 7
 
         block:
-            let numOfRows = getNumberOfRows(f)
+            let numOfRows = int(getNumberOfRows(f))
             assert numOfRows == 9
             var numbers : seq[int32]
             newSeq(numbers, numOfRows)
@@ -1618,7 +1618,7 @@ when isMainModule:
         assert getColumnNumber(f, "float") == 1
 
         block:
-            let numOfRows = getNumberOfRows(f)
+            let numOfRows = int(getNumberOfRows(f))
             assert numOfRows == 3
             var numbers : seq[float64]
             newSeq(numbers, numOfRows)
@@ -1634,7 +1634,7 @@ when isMainModule:
 
         # Test for NULLs
         block:
-            let numOfRows = getNumberOfRows(f)
+            let numOfRows = int(getNumberOfRows(f))
             assert numOfRows == 3
             var numbers : seq[float64]
             var nulls : seq[bool]
@@ -1655,7 +1655,7 @@ when isMainModule:
         assert getNumberOfColumns(f) == 1
 
         block:
-            let numOfRows = getNumberOfRows(f)
+            let numOfRows = int(getNumberOfRows(f))
             assert numOfRows == 9
             var strings : seq[string]
             newSeq(strings, numOfRows)
