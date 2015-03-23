@@ -1187,7 +1187,7 @@ type
         repeatCount* : int
         unit* : string
         case dataType* : DataType
-        of dtString: width : int
+        of dtString: width* : int
         else: nil
 
 proc tableTypeToInt(tableType : TableType) : cint {. noSideEffect, inline .} =
