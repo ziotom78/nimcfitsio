@@ -1,6 +1,6 @@
 [Package]
 name          = "nimcfitsio"
-version       = "0.1.0"
+version       = "0.1.1"
 author        = "Maurizio Tomasi <ziotom78 .at. gmail.com>"
 description   = "Bindings for the CFITSIO library"
 license       = "MIT"
