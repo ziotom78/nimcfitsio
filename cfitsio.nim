@@ -1148,7 +1148,7 @@ proc readColumnOfString*(fileObj : var FitsFile,
 
         finally:
             for idx in 0 .. (numOfElements - 1):
-                free(cDest[idx])
+                dealloc(cDest[idx])
 
 proc readColumnOfString*(fileObj : var FitsFile,
                          colNum : int,
